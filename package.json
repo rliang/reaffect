@@ -1,0 +1,25 @@
+{
+  "name": "reaffect",
+  "version": "1.0.0",
+  "description": "Reactive side-effect container for Javascript apps",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rliang/reaffect.git"
+  },
+  "keywords": [
+    "side-effects",
+    "reactive",
+    "functional"
+  ],
+  "author": "Ricardo Liang",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/rliang/reaffect/issues"
+  },
+  "homepage": "https://github.com/rliang/reaffect#readme",
+  "engines": {
+    "node": ">=7.6.0"
+  }
+}
