@@ -29,28 +29,55 @@ const effects = createStore()
 
 ### Defining an effect
 
-An effect is an **async generator function** and its arguments.
-Thus, an active effect is the respective running async generator.
-It may communicate with the exterior world
-by yielding or returning values.
+An effect is uniquely identified by
+a function that returns an async iterator,
+and arguments for that function.
+Thus, an active effect is the respective started async iterator,
+which can be cancelled by calling `.return()` on it.
 
 ```js
-async function* YieldEachSecond(value) {
-  let id
-  try {
-    while (true)
-      yield await new Promise(resolve => id = setTimeout(resolve, 1000, value))
-  } finally {
-    clearTimeout(id)
+const YieldEachSecond = value => {
+  let next, id = setInterval(() => next(value), 1000)
+  return {
+    async next() {
+      await new Promise(resolve => next = resolve)
+      return { done: false, value }
+    },
+    return() {
+      clearInterval(id)
+    },
   }
 }
 ```
 
-Now, this has quite a bit of boilerplate for just a timeout.
-That's because we had to create a sequence of Promises
-wrapping `setTimeout`, which is a callback-based interface.
+This example, however, doesn't work exactly the way we expect it to.
 
-We can do this more efficiently with a wrapper library such as
+Since iterators are *pull*-based
+and callbacks (`setInterval`) are *push*-based,
+values emitted between calls to `.next()` are lost.
+
+We can fix that with a buffer.
+
+```js
+const YieldEachSecond = value => {
+  let buffer = [], next, id = setInterval(() => { buffer.push(value); next() }, 1000)
+  return {
+    async next() {
+      if (!buffer.length)
+        await new Promise(resolve => next = resolve)
+      return { done: false, value: buffer.shift() }
+    },
+    return() {
+      clearInterval(id)
+    },
+  }
+}
+```
+
+That's a lot of boilerplate for just an interval.
+
+We can more efficiently wrap callback-based interfaces
+with a library such as
 [callback-to-async-iterator](https://github.com/withspectrum/callback-to-async-iterator).
 
 ```js
@@ -68,7 +95,7 @@ that takes any amount of effects as arguments.
 
 To activate an effect,
 pass it as an array
-where the first item is the async generator function
+where the first item is the function
 and the rest are its arguments.
 
 Then, `effects` returns a promise
@@ -81,12 +108,6 @@ const nextValue = await effects([YieldEachSecond, 'hello'])
 
 To cancel effects,
 simply call `effects()` again, but without them.
-This causes `.return()` to be called on their async generators.
-
-```js
-const nextValue = await effects([YieldEachSecond, 'world'])
-// >>> 'world'
-```
 
 Subsequent calls to `effects()` with the same effects will not restart them.
 
@@ -137,16 +158,21 @@ app(createStore())
 ### Higher-order effects
 
 ```js
-async function* WithLog(fn, ...args) {
+const WithLog = (fn, ...args) => {
   const key = JSON.stringify([fn.name, ...args])
-  console.log(`${key} starting`)
-  try {
-    for await (const value of fn(...args)) {
-      console.log(`${key}: yield "${value}"`)
-      yield value
-    }
-  } finally {
-    console.log(`${key} cancelled`)
+  const gen = fn(...args)
+  console.log(`${key} starteed`)
+  return {
+    async next() {
+      const { done, value } = await gen.next()
+      if (!done)
+        console.log(`${key} yield "${value}"`)
+      return { done, value }
+    },
+    return() {
+      console.log(`${key} cancelled`)
+      return gen.return()
+    },
   }
 }
 
