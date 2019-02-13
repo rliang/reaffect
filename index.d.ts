@@ -6,4 +6,4 @@ export type Effect<T> =
 export type Store =
   <T>(...effects: (Effect<T> | false)[]) => Promise<T>
 
-export default function createStore(hash: (effect: Effect<any>) => string): Store
+export default function createStore(hash?: (effect: Effect<any>) => string): Store
