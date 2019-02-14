@@ -5,7 +5,7 @@ module.exports = (gen, hash=v => JSON.stringify(v, (k, v) => typeof v === 'funct
       let updated = {};
       for (let effect of result.value) {
         if (effect) {
-          key = hash(effect);
+          let key = hash(effect);
           updated[key] = current[key] || effect[0]((key => (value, done) => {
             if (key in current) {
               if (done) {
