@@ -4,11 +4,9 @@
 
 Reaffect is a reactive side-effect container for Javascript apps.
 
-It allows building apps where side-effects are:
-
-* A function of the current state of the application;
-* Separate from business logic;
-* Written with idiomatic modern Javascript.
+It allows building apps where side-effects are
+a function of the current state of the application,
+and separate from business logic.
 
 ## [Getting started](#getting-started)
 
@@ -20,96 +18,45 @@ It allows building apps where side-effects are:
 npm i reaffect
 ```
 
-### Creating a store
+### Defining effects
+
+An effect is just a function which:
+
+* Takes a callback as the first argument, which, in turn:
+  * Takes a value as the first argument;
+  * Takes whether the effect is completed as the second argument.
+* Returns another function which cancels the effect.
 
 ```js
-import createStore from 'reaffect'
-const effects = createStore()
-```
-
-### Defining an effect
-
-An effect is uniquely identified by
-a function that returns an async iterator,
-and arguments for that function.
-Thus, an active effect is the respective started async iterator,
-which can be cancelled by calling `.return()` on it.
-
-```js
-const YieldEachSecond = value => {
-  let next, id = setInterval(() => next(value), 1000)
-  return {
-    async next() {
-      await new Promise(resolve => next = resolve)
-      return { done: false, value }
-    },
-    return() {
-      clearInterval(id)
-    },
-  }
+function YieldEachSecond(send, valueToSend) {
+  const id = setInterval(() => send(valueToSend, false), 1000)
+  return () => clearInterval(id)
 }
-```
-
-This example, however, doesn't work exactly the way we expect it to.
-
-Since iterators are *pull*-based
-and callbacks (`setInterval`) are *push*-based,
-values emitted between calls to `.next()` are lost.
-
-We can fix that with a buffer.
-
-```js
-const YieldEachSecond = value => {
-  let buffer = [], next, id = setInterval(() => { buffer.push(value); next() }, 1000)
-  return {
-    async next() {
-      if (!buffer.length)
-        await new Promise(resolve => next = resolve)
-      return { done: false, value: buffer.shift() }
-    },
-    return() {
-      clearInterval(id)
-    },
-  }
-}
-```
-
-That's a lot of boilerplate for just an interval.
-
-We can more efficiently wrap callback-based interfaces
-with a library such as
-[callback-to-async-iterator](https://github.com/withspectrum/callback-to-async-iterator).
-
-```js
-import asyncify from 'callback-to-async-iterator'
-
-const YieldEachSecond = value =>
-  asyncify(next => Promise.resolve(setInterval(next, 1000, value)),
-    { onClose: clearInterval })
 ```
 
 ### Storing effects
 
-The store `effects` is a just a function
-that takes any amount of effects as arguments.
-
-To activate an effect,
-pass it as an array
-where the first item is the function
-and the rest are its arguments.
-
-Then, `effects` returns a promise
-to the next value yielded by any of the stored effects.
+Storing effects and retrieving their emitted values
+can be done inside of a generator,
+or any object with a `next` method.
 
 ```js
-const nextValue = await effects([YieldEachSecond, 'hello'])
-// >>> 'hello'
+import reaffect from 'reaffect'
+
+function* app() { 
+  while (true) {
+    const msg = yield [
+      [YieldEachSecond, 'hello'],
+      [YieldEachSecond, 'world'],
+    ]
+    console.log(msg)
+  }
+}
+
+reaffect(app())
 ```
 
-To cancel effects,
-simply call `effects()` again, but without them.
-
-Subsequent calls to `effects()` with the same effects will not restart them.
+See below for a more practical usage.
 
 ## [Examples](#examples)
 
@@ -118,29 +65,30 @@ Subsequent calls to `effects()` with the same effects will not restart them.
 ```js
 import React from 'react'
 import { render } from 'react-dom'
-import createStore from 'reaffect'
-import asyncify from 'callback-to-async-iterator'
+import reaffect from 'reaffect'
 
-const YieldEachSecond = value =>
-  asyncify(next => Promise.resolve(setInterval(next, 1000, value)),
-    { onClose: clearInterval })
+const YieldEachSecond = (send, value) =>
+  clearInterval.bind(this, setInterval(send, 1000, value))
 
-const Render = count =>
-  asyncify(next => Promise.resolve(render((
+const Render = (send, state) => {
+  render(
     <div>
-      <div>{count}</div>
-      <button onClick={() => next('increase')}>+1</button>
-      <button onClick={() => next('decrease')}>-1</button>
+      <div>{state.count}</div>
+      <button onClick={() => send('increase')}>+1</button>
+      <button onClick={() => send('decrease')}>-1</button>
     </div>
-  ), document.getElementById('root'))))
+  , document.getElementById('root')))
+  return () => send = () => {}
+}
 
-async function app(effects) {
+function* app() { 
   let count = 0
   while (true) {
-    const msg = await effects(
+    const msg = yield [
       [Render, count], 
       count > 0 && [YieldEachSecond, 'decrease'],
-    )
+      count < 0 && [YieldEachSecond, 'increase'],
+    ]
     switch (msg) {
       case 'increase':
         count++
@@ -152,31 +100,35 @@ async function app(effects) {
   }
 }
 
-app(createStore())
+reaffect(app())
 ```
 
 ### Higher-order effects
 
 ```js
-const WithLog = (fn, ...args) => {
-  const key = JSON.stringify([fn.name, ...args])
-  const gen = fn(...args)
-  console.log(`${key} starteed`)
-  return {
-    async next() {
-      const { done, value } = await gen.next()
-      if (!done)
-        console.log(`${key} yield "${value}"`)
-      return { done, value }
-    },
-    return() {
-      console.log(`${key} cancelled`)
-      return gen.return()
-    },
-  }
+const WithLog = (send, f, ...args) => {
+  const effect = JSON.stringify([f.name, ...args])
+  console.log(`${effect} started`)
+  const end = f((value, done) => {
+    if (!done)
+      console.log(`${effect} sent "${value}"`)
+    send(value, done)
+  }, ...args)
+  return () => { end(); console.log(`${effect} cancelled`) }
 }
+// yield [[WithLog, YieldEachSecond, 'hello']]
+```
 
-await effect([WithLog, YieldEachSecond, 'hello'])
+```js
+const WithFlatten = (send, ...effs) => {
+  let dones = 0
+  const ends = effs.map(([f, ...args]) => f((value, done) => {
+    if (done)
+      dones++
+    send(value, dones >= effs.length)
+  }, ...args))
+  return () => { ends.map(end => end()) }
+}
 ```
 
 ## [Acknowledgements](#acknowledgements)

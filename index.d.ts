@@ -1,9 +1,14 @@
 export as namespace reaffect
 
-export type Effect<T> =
-  [(...args: any[]) => AsyncIterator<T>, ...any[]]
+export type Effect<T> = [
+  (
+    next: (value: T, done?: boolean) => void,
+    ...args: any[]
+  ) => () => void,
+  ...any[],
+]
 
-export type Store =
-  <T>(...effects: (Effect<T> | false)[]) => Promise<T>
-
-export default function createStore(hash?: (effect: Effect<any>) => string): Store
+export default function reaffect<T>(
+  gen: { next: (value: T) => (Effect<T> | false)[] },
+  hash?: (effect: Effect<T>) => string
+): void

@@ -1,6 +1,6 @@
 {
   "name": "reaffect",
-  "version": "1.0.1",
+  "version": "2.0.0",
   "description": "Reactive side-effect container for Javascript apps",
   "main": "index.js",
   "types": "index.d.ts",
@@ -18,8 +18,5 @@
   "bugs": {
     "url": "https://github.com/rliang/reaffect/issues"
   },
-  "homepage": "https://github.com/rliang/reaffect#readme",
-  "engines": {
-    "node": ">=7.6.0"
-  }
+  "homepage": "https://github.com/rliang/reaffect#readme"
 }
