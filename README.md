@@ -67,7 +67,7 @@ import React from 'react'
 import { render } from 'react-dom'
 import reaffect from 'reaffect'
 
-const YieldEachSecond = (send, value) =>
+const YieldEverySecond = (send, value) =>
   clearInterval.bind(this, setInterval(send, 1000, value))
 
 const Render = (send, state) => {
@@ -82,19 +82,19 @@ const Render = (send, state) => {
 }
 
 function* app() { 
-  let count = 0
+  let state = {count: 0}
   while (true) {
     const msg = yield [
-      [Render, count], 
+      [Render, state], 
       count > 0 && [YieldEachSecond, 'decrease'],
       count < 0 && [YieldEachSecond, 'increase'],
     ]
     switch (msg) {
       case 'increase':
-        count++
+        state = {...state, count: count + 1}
         break
       case 'decrease':
-        count--
+        state = {...state, count: count - 1}
         break
     }
   }
