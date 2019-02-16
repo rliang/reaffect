@@ -1,8 +1,8 @@
 module.exports = (gen, hash=v => JSON.stringify(v, (k, v) => typeof v === 'function' ? v.toString() : v)) => {
   let current = {}, next = value => {
     let result = gen.next(value);
+    let updated = {};
     if (!result.done) {
-      let updated = {};
       for (let effect of result.value) {
         if (effect) {
           let key = hash(effect);
@@ -18,10 +18,10 @@ module.exports = (gen, hash=v => JSON.stringify(v, (k, v) => typeof v === 'funct
           delete current[key];
         }
       }
-      for (let key in current)
-        current[key]();
-      current = updated;
     }
+    for (let key in current)
+      current[key]();
+    current = updated;
   };
   next();
 }
