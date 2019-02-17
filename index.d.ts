@@ -6,7 +6,7 @@ export type Callback<T> = (
 ) => void
 
 export type Effect<T> = [
-  (next: Callback<T>, ...args: any[]) => () => void,
+  (send: Callback<T>, ...args: any[]) => () => void,
   ...any[],
 ]
 

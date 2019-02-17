@@ -9,9 +9,11 @@ It allows building apps where side-effects are
 a function of the current state of the application,
 and separate from business logic.
 
-## [Getting started](#getting-started)
+[API](index.d.ts)
 
-[Skip to Examples](#examples)
+[Examples](#examples)
+
+## [Getting started](#getting-started)
 
 ### Installation
 
@@ -29,9 +31,24 @@ An effect is just a function which:
 * Returns another function which cancels the effect.
 
 ```js
-function YieldEachSecond(send, valueToSend) {
+function SendEachSecond(send, valueToSend) {
   const id = setInterval(() => send(valueToSend, false), 1000)
   return () => clearInterval(id)
+}
+```
+
+Effects are composable:
+
+```js
+const WithLog = (send, f, ...args) => {
+  const effect = JSON.stringify([f.name, ...args])
+  console.log(`${effect} started`)
+  const cancel = f((value, done) => {
+    if (!done)
+      console.log(`${effect} sent "${value}"`)
+    send(value, done)
+  }, ...args)
+  return () => { cancel(); console.log(`${effect} cancelled`) }
 }
 ```
 
@@ -47,14 +64,26 @@ import reaffect from 'reaffect'
 function* app() { 
   while (true) {
     const msg = yield [
-      [YieldEachSecond, 'hello'],
-      [YieldEachSecond, 'world'],
+      [SendEachSecond, 'hello'],
+      [WithLog, SendEachSecond, 'world'],
     ]
     console.log(msg)
   }
 }
 
 reaffect(app())
+```
+
+Generators are composable:
+
+```js
+function* screen1() { 
+  while (true) {
+    const msg = yield [/* ... */]
+    if (msg === 'screen2')
+      yield* screen2()
+  }
+}
 ```
 
 See below for a more practical usage.
@@ -68,7 +97,7 @@ import React from 'react'
 import { render } from 'react-dom'
 import reaffect from 'reaffect'
 
-const YieldEverySecond = (send, value) =>
+const SendEverySecond = (send, value) =>
   clearInterval.bind(this, setInterval(send, 1000, value))
 
 const Render = (send, state) => {
@@ -87,8 +116,8 @@ function* app() {
   while (true) {
     const msg = yield [
       [Render, state], 
-      count > 0 && [YieldEachSecond, 'decrease'],
-      count < 0 && [YieldEachSecond, 'increase'],
+      count > 0 && [SendEachSecond, 'decrease'],
+      count < 0 && [SendEachSecond, 'increase'],
     ]
     switch (msg) {
       case 'increase':
@@ -104,21 +133,10 @@ function* app() {
 reaffect(app())
 ```
 
-### Higher-order effects
+## Compatibility with Async Iterators
 
-```js
-const WithLog = (send, f, ...args) => {
-  const effect = JSON.stringify([f.name, ...args])
-  console.log(`${effect} started`)
-  const end = f((value, done) => {
-    if (!done)
-      console.log(`${effect} sent "${value}"`)
-    send(value, done)
-  }, ...args)
-  return () => { end(); console.log(`${effect} cancelled`) }
-}
-// yield [[WithLog, YieldEachSecond, 'hello']]
-```
+Although async iterators are not really immediately cancellable,
+`.return()` will do it after the next promise resolves.
 
 ```js
 const WrapAsyncIterator = (send, f, ...args) => {
