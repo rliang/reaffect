@@ -120,14 +120,13 @@ const WithLog = (send, f, ...args) => {
 ```
 
 ```js
-const WithFlatten = (send, ...effs) => {
-  let dones = 0
-  const ends = effs.map(([f, ...args]) => f((value, done) => {
-    if (done)
-      dones++
-    send(value, dones >= effs.length)
-  }, ...args))
-  return () => { ends.map(end => end()) }
+const WrapAsyncIterator = (send, f, ...args) => {
+  const it = (async () => {
+    for await (const v of f(...args))
+      send(v)
+    send(null, true)
+  })()
+  return () => it.return()
 }
 ```
 
