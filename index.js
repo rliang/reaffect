@@ -1,4 +1,7 @@
-module.exports = (gen, hash=v => JSON.stringify(v, (k, v) => typeof v === 'function' ? v.toString() : v)) => {
+let defaultHash = v => JSON.stringify(v, (k, v) =>
+  typeof v === 'object' ? {...v} : typeof v === 'function' ? `${v}` : v);
+
+module.exports = (gen, hash=defaultHash) => {
   let current = {}, next = value => {
     let result = gen.next(value);
     let updated = {};

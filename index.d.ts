@@ -20,9 +20,9 @@ export type Effect<T> = [
  * callback, in which case the effect is cancelled instead.
  *
  * @param gen The generator or iterator-like object that feeds the store.
- * @param hash A function that returns a string representation of an effect.
- * By default, it is {@link Function.toString} for functions and
- * {@link JSON.stringify} for other types.
+ * @param hash A function that returns a unique string representation of an
+ * effect. By default it's {@link JSON.stringify}, but using {@link Object}s'
+ * enumerable properties and {@link Function.toString} for functions.
  */
 export default function reaffect<T>(
   gen: { next: (value: T) => (Effect<T> | false)[] },
