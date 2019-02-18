@@ -9,11 +9,11 @@ It allows building apps where side-effects are
 a function of the current state of the application,
 and separate from business logic.
 
+## Getting started
+
 [API](index.d.ts)
 
 [Examples](#examples)
-
-## [Getting started](#getting-started)
 
 ### Installation
 
@@ -23,16 +23,17 @@ npm i reaffect
 
 ### Defining effects
 
-An effect is just a function which:
+An effect is just a function
+which takes a *dispatcher* function as the first argument,
+and returns a *canceller* function.
 
-* Takes a callback as the first argument, which, in turn:
-  * Takes a value as the first argument;
-  * Takes whether the effect is completed as the second argument.
-* Returns another function which cancels the effect.
+The dispatcher function
+takes a value as the first argument,
+and whether the effect is finished as the second argument.
 
 ```js
-function SendEachSecond(send, valueToSend) {
-  const id = setInterval(() => send(valueToSend, false), 1000)
+function SendEachSecond(dispatch, valueToSend) {
+  const id = setInterval(() => dispatch(valueToSend, false), 1000)
   return () => clearInterval(id)
 }
 ```
@@ -40,22 +41,34 @@ function SendEachSecond(send, valueToSend) {
 Effects are composable:
 
 ```js
-const WithLog = (send, f, ...args) => {
-  const effect = JSON.stringify([f.name, ...args])
-  console.log(`${effect} started`)
+const WithLog = (dispatch, f, ...args) => {
+  const str = JSON.stringify([f.name, ...args])
+  console.log(`${str} started`)
   const cancel = f((value, done) => {
     if (!done)
-      console.log(`${effect} sent "${value}"`)
-    send(value, done)
+      console.log(`${str} sent "${value}"`)
+    dispatch(value, done)
   }, ...args)
-  return () => { cancel(); console.log(`${effect} cancelled`) }
+  return () => { cancel(); console.log(`${str} cancelled`) }
 }
 ```
 
-### Storing effects
+```js
+const WithTakeN = (dispatch, n, f, ...args) => {
+  let k = 0
+  return f((value, done) => dispatch(value, done || k++ < n), ...args)
+}
+```
 
-Storing effects and retrieving their emitted values
-can be done inside of a generator,
+```js
+const WithDiscard = (dispatch, f, ...args) =>
+  f((value, done) => done && dispatch(null, done), ...args)
+```
+
+### Activating effects
+
+Activating effects and retrieving their sent values
+can be done inside a generator function
 or any object with a `next` method.
 
 ```js
@@ -86,7 +99,12 @@ function* screen1() {
 }
 ```
 
-See below for a more practical usage.
+```js
+function* reaffectWithLog(gen) { 
+  for (const effects of gen)
+    yield effects.map(e => [WithLog, ...e])
+}
+```
 
 ## [Examples](#examples)
 
@@ -97,34 +115,34 @@ import React from 'react'
 import { render } from 'react-dom'
 import reaffect from 'reaffect'
 
-const SendEverySecond = (send, value) =>
-  clearInterval.bind(this, setInterval(send, 1000, value))
+const SendEverySecond = (dispatch, value) =>
+  clearInterval.bind(this, setInterval(dispatch, 1000, value))
 
-const Render = (send, state) => {
+const Render = (dispatch, count) => {
   render(
     <div>
-      <div>{state.count}</div>
-      <button onClick={() => send('increase')}>+1</button>
-      <button onClick={() => send('decrease')}>-1</button>
+      <div>{count}</div>
+      <button onClick={() => dispatch('increase')}>+1</button>
+      <button onClick={() => dispatch('decrease')}>-1</button>
     </div>
   , document.getElementById('root')))
-  return () => send = () => {}
+  return () => dispatch = () => {}
 }
 
 function* app() { 
-  let state = {count: 0}
+  let count = 0
   while (true) {
     const msg = yield [
-      [Render, state], 
+      [Render, count], 
       count > 0 && [SendEachSecond, 'decrease'],
       count < 0 && [SendEachSecond, 'increase'],
     ]
     switch (msg) {
       case 'increase':
-        state = {...state, count: count + 1}
+        count++
         break
       case 'decrease':
-        state = {...state, count: count - 1}
+        count--
         break
     }
   }
@@ -139,17 +157,17 @@ Although async iterators are not really immediately cancellable,
 `.return()` will do it after the next promise resolves.
 
 ```js
-const WrapAsyncIterator = (send, f, ...args) => {
+const WrapAsyncIterator = (dispatch, f, ...args) => {
   const it = (async () => {
     for await (const v of f(...args))
-      send(v)
-    send(null, true)
+      dispatch(v)
+    dispatch(null, true)
   })()
   return () => it.return()
 }
 ```
 
-## [Acknowledgements](#acknowledgements)
+## Acknowledgements
 
 This library is inspired by
 [hyperapp](https://github.com/jorgebucaran/hyperapp/tree/V2)
