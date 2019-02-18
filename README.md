@@ -100,10 +100,8 @@ function* screen1() {
 ```
 
 ```js
-function* reaffectWithLog(gen) { 
-  for (const effects of gen)
-    yield effects.map(e => [WithLog, ...e])
-}
+const withLogAll = generator =>
+  ({ next: value => generator.next(value).map(effect => [WithLog, ...effect]) })
 ```
 
 ## [Examples](#examples)
