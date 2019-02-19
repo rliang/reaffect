@@ -38,7 +38,7 @@ function SendEachSecond(dispatch, valueToSend) {
 }
 ```
 
-Effects are composable:
+Effects can be made higher-order:
 
 ```js
 const WithLog = (dispatch, f, ...args) => {
@@ -99,9 +99,15 @@ function* screen1() {
 }
 ```
 
+And can be made higher-order:
+
 ```js
-const withLogAll = generator =>
-  ({ next: value => generator.next(value).map(effect => [WithLog, ...effect]) })
+const withLogAll = gen => ({
+  next(v) {
+    v = gen.next(v)
+    return { done: v.done, value: v.done || v.value.map(e => [WithLog, ...e]) }
+  }
+})
 ```
 
 ## [Examples](#examples)

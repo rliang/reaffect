@@ -1,32 +1,63 @@
-let defaultHash = v => JSON.stringify(v, (k, v) =>
-  typeof v === 'object' ? {...v} : typeof v === 'function' ? `${v}` : v);
+// @ts-check
 
-module.exports = (gen, hash=defaultHash) => {
-  let current = {}, next = value => {
-    let result = gen.next(value);
-    let updated = {};
-    // Same behavior as `yield*`: ignore return value.
-    if (!result.done) for (let effect of result.value) if (effect) {
-      let key = hash(effect);
-      // Transfer existing effect to `updated` if any, or initialize one
-      updated[key] = current[key] || effect[0]((value, done) => {
-        // In case the callback is somehow invoked after the effect is
-        // cancelled.
-        if (key in current) {
-          // Immediately cancel effect if done, might need a restart.
-          if (done) {
-            current[key]();
-            delete current[key];
-          }
-          next(value);
+/**
+ * @template T
+ * @typedef {(value: T, done?: boolean) => void} Dispatcher
+ */
+/**
+ * @template T
+ * @typedef {[(dispatch: Dispatcher<T>, ...args: any[]) => () => void, ...any[]]} Effect
+ */
+/**
+ * @template T
+ * @typedef {{next: (value: T) => {value: (Effect<T> | false)[], done?: boolean}}} Engine
+ */
+
+/**
+ * @param {any[]} a
+ * @param {any[]} b
+ */
+let defaultIsEqual = (a, b) => {
+  let n = a.length;
+  if (n !== b.length)
+    return false;
+  for (let i = 0; i < n; i++)
+    if (a[i] !== b[i])
+      return false;
+  return true;
+};
+
+/**
+ * @template T
+ * @param {Engine<T>} gen
+ * @param {(a: any[], b: any[]) => boolean} isEqual
+ */
+module.exports.default = (gen, isEqual=defaultIsEqual) => {
+  /** @type {{e: Effect<T>, k: () => void, d?: boolean}[]} */
+  let olds = [];
+  /** @type {(v?: T) => void} */
+  let next = v => {
+    let r = gen.next(v), news = r.done ? [] : r.value.filter(e => e).map((/** @type {Effect<T>} */ e) => {
+      // Find effect state in cache
+      for (let j = 0; j < olds.length; j++) {
+        if (isEqual(e, olds[j].e)) {
+          // Found: But is done, should be restarted
+          if (olds[j].d)
+            break;
+          // Found: Transfer from olds to news
+          return olds.splice(j, 1)[0];
         }
-      }, ...effect.slice(1));
-      delete current[key];
-    }
-    // Cancel remaining effects which were not transferred to `updated`.
-    for (let key in current)
-      current[key]();
-    current = updated;
+      }
+      // Not found, initialize effect state
+      let state = {e, k: e[0]((v, done) => {
+        state.d = done;
+        next(v);
+      }, ...e.slice(1))};
+      return state;
+    });
+    // Cancel effects which were not transferred during the traversal
+    olds.forEach(s => s.k());
+    olds = news;
   };
   next();
-}
+};

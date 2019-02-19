@@ -1,30 +1,21 @@
 export as namespace reaffect
 
-export type Callback<T> = (
-  value: T,
-  done?: boolean
-) => void
+export type Dispatcher<T> = (value: T, done?: boolean) => void
 
-export type Effect<T> = [
-  (send: Callback<T>, ...args: any[]) => () => void,
-  ...any[],
-]
+export type Effect<T> = [(dispatch: Dispatcher<T>, ...args: any[]) => () => void, ...any[]]
+
+export type Engine<T> = {next: (value: T) => {value: (Effect<T> | false)[], done?: boolean}}
 
 /**
- * Creates an effect store, fed by the given generator.
+ * Creates an effect store, controlled by the given engine.
  *
- * The generator's "next" method is called once, which shall return an array of
+ * The engine's "next" method is called once, which shall return an array of
  * {@link Effect}s to activate.
- * Afterwards, whenever an effect invokes its {@link Callback} with a value,
+ * Afterwards, whenever an effect invokes its {@link Dispatcher} with a value,
  * "next" is called with such value, except if "done" is passed to the
  * callback, in which case the effect is cancelled instead.
  *
- * @param gen The generator or iterator-like object that feeds the store.
- * @param hash A function that returns a unique string representation of an
- * effect. By default it's {@link JSON.stringify}, but using {@link Object}s'
- * enumerable properties and {@link Function.toString} for functions.
+ * @param gen The iterator-like object that feeds the store.
+ * @param isEqual A function that compares {@link Effect}s for equality.
  */
-export default function reaffect<T>(
-  gen: Iterator<(Effect<T> | false)[]>,
-  hash?: (effect: Effect<T>) => string
-): void
+export default function reaffect<T>(gen: Engine<T>, isEqual?: (a: any[], b: any[]) => boolean): void
