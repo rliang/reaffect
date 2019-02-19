@@ -18,4 +18,4 @@ export type Engine<T> = {next: (value: T) => {value: (Effect<T> | false)[], done
  * @param gen The iterator-like object that feeds the store.
  * @param isEqual A function that compares {@link Effect}s for equality.
  */
-export default function reaffect<T>(gen: Engine<T>, isEqual?: (a: any[], b: any[]) => boolean): void
+export function reaffect<T>(gen: Engine<T>, isEqual?: (a: any[], b: any[]) => boolean): void

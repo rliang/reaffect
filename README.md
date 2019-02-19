@@ -72,7 +72,7 @@ can be done inside a generator function
 or any object with a `next` method.
 
 ```js
-import reaffect from 'reaffect'
+import { reaffect } from 'reaffect'
 
 function* app() { 
   while (true) {
@@ -117,7 +117,7 @@ const withLogAll = gen => ({
 ```js
 import React from 'react'
 import { render } from 'react-dom'
-import reaffect from 'reaffect'
+import { reaffect } from 'reaffect'
 
 const SendEverySecond = (dispatch, value) =>
   clearInterval.bind(this, setInterval(dispatch, 1000, value))

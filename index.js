@@ -32,7 +32,7 @@ let defaultIsEqual = (a, b) => {
  * @param {Engine<T>} gen
  * @param {(a: any[], b: any[]) => boolean} isEqual
  */
-module.exports.default = (gen, isEqual=defaultIsEqual) => {
+module.exports.reaffect = (gen, isEqual=defaultIsEqual) => {
   /** @type {{e: Effect<T>, k: () => void, d?: boolean}[]} */
   let olds = [];
   /** @type {(v?: T) => void} */
