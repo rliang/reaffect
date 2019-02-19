@@ -1,6 +1,6 @@
 {
   "name": "reaffect",
-  "version": "2.0.5",
+  "version": "2.0.6",
   "description": "Reactive side-effect container for Javascript apps",
   "main": "index.js",
   "types": "index.d.ts",

@@ -25,6 +25,6 @@ export type Effect<T> = [
  * enumerable properties and {@link Function.toString} for functions.
  */
 export default function reaffect<T>(
-  gen: { next: (value: T) => (Effect<T> | false)[] },
+  gen: Iterator<(Effect<T> | false)[]>,
   hash?: (effect: Effect<T>) => string
 ): void
