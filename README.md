@@ -1,6 +1,6 @@
 # Reaffect
 [![npm](https://img.shields.io/npm/v/reaffect.svg)](https://www.npmjs.org/package/reaffect)
-[![size](https://img.badgesize.io/rliang/reaffect/master/index.js.png?compression=gzip)](https://github.com/ngryman/badge-size)
+[![size](https://img.shields.io/bundlephobia/minzip/reaffect.svg)](https://bundlephobia.com)
 [![deps](https://david-dm.org/rliang/reaffect/status.svg)](https://david-dm.org/rliang/reaffect)
 
 Reaffect is a reactive side-effect container for Javascript apps.
@@ -176,7 +176,3 @@ const WrapAsyncIterator = (dispatch, f, ...args) => {
 This library is inspired by
 [hyperapp](https://github.com/jorgebucaran/hyperapp/tree/V2)
 and [Elm](https://elm-lang.org).
-
-## [License](#license)
-
-MIT
