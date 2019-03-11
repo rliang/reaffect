@@ -8,7 +8,9 @@ Reaffect is a reactive effect container for Javascript apps.
 It allows writing business logic as generator functions
 where each yield point specifies a set of active effects,
 which are then automatically started, cancelled or kept active.
-This means effects are reactive, that is, reflect the current state of the application.
+
+This means effects are reactive.
+That is, they reflect the current state of the application.
 
 - 📚 [API](index.d.ts)
 - ⚡ [Examples](example)
@@ -125,7 +127,7 @@ import React from 'react'
 import { render } from 'react-dom'
 import { reaffect } from 'reaffect'
 
-const SendEverySecond = (dispatch, value) =>
+const SendEachSecond = (dispatch, value) =>
   clearInterval.bind(this, setInterval(dispatch, 1000, value))
 
 const Render = (dispatch, count) => {
