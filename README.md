@@ -3,17 +3,17 @@
 [![size](https://img.shields.io/bundlephobia/minzip/reaffect.svg)](https://bundlephobia.com)
 [![deps](https://david-dm.org/rliang/reaffect/status.svg)](https://david-dm.org/rliang/reaffect)
 
-Reaffect is a reactive side-effect container for Javascript apps.
+Reaffect is a reactive effect container for Javascript apps.
 
-It allows building apps where side-effects are
-a function of the current state of the application,
-and separate from business logic.
+It allows writing business logic as generator functions
+where each yield point specifies a set of active effects,
+which are then automatically started, cancelled or kept active.
+This means effects are reactive, that is, reflect the current state of the application.
+
+- 📚 [API](index.d.ts)
+- ⚡ [Examples](example)
 
 ## Getting started
-
-[API](index.d.ts)
-
-[Examples](#examples)
 
 ### Installation
 
@@ -38,7 +38,10 @@ function SendEachSecond(dispatch, valueToSend) {
 }
 ```
 
-Effects can be made higher-order:
+In the following examples,
+we can see that effects can be wrapped
+into higher-order effects that process the events
+they receive in some way.
 
 ```js
 const WithLog = (dispatch, f, ...args) => {
@@ -87,7 +90,8 @@ function* app() {
 reaffect(app())
 ```
 
-Generators are composable:
+In the following example,
+we can see that generators are composable through `yield*`.
 
 ```js
 function* screen1() { 
@@ -99,13 +103,15 @@ function* screen1() {
 }
 ```
 
-And can be made higher-order:
+The following example wraps a generator
+into a higher-order generator
+that logs all events it receives.
 
 ```js
 const withLogAll = gen => ({
   next(v) {
-    v = gen.next(v)
-    return { done: v.done, value: v.done || v.value.map(e => [WithLog, ...e]) }
+    let { done, value } = gen.next(v)
+    return { done, value: done ? undefined : value.map(e => e && [WithLog, ...e]) }
   }
 })
 ```

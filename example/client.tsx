@@ -23,7 +23,7 @@ const ErrorEvents = fromEmissions<any, Msg>('error',
   (src: WebSocket, error) => ({kind: 'error', src, error}))
 
 const MessageEvents = fromEmissions<MessageEvent, Msg>('message',
-  (src: WebSocket, event: MessageEvent) => ({kind: 'message', src, data: event.data}))
+  (src: WebSocket, event) => ({kind: 'message', src, data: event.data}))
 
 const CloseEvents = fromEmissions<any, Msg>('close',
   (src: WebSocket) => ({kind: 'close', src}))
@@ -38,6 +38,7 @@ const Render = (dispatch: Dispatcher<Msg>, root: Element, count: number) => {
 }
 
 function* connect() {
+  // connects to a websocket server, with backoff algorithm
   for (let timeout = 0; true; timeout += timeout < 100000 ? 10000 : 0) {
     const socket = new WebSocket('ws://localhost:1234')
     const msg = (
@@ -49,23 +50,28 @@ function* connect() {
   }
 }
 
-function* app(root: Element): Engine<Msg> { 
+function* main(root: Element) { 
+  // @ts-ignore
+  const socket: WebSocket = yield* connect()
   while (true) {
-    // @ts-ignore
-    const socket: WebSocket = yield* connect()
-    main:
-    while (true) {
-      const msg = (
-        yield [MessageEvents, CloseEvents].map(e => [e, socket] as Effect<Msg>)
-      ) as Msg
-      switch (msg.kind) {
-        case 'close':
-          break main;
-        default:
-          console.log(msg)
-      }
+    const msg = (
+      yield [MessageEvents, CloseEvents].map(e => [e, socket] as Effect<Msg>)
+    ) as Msg
+    switch (msg.kind) {
+      case 'message':
+        console.log(msg)
+        break
+      case 'close':
+        socket.close()
+        return
     }
   }
 }
 
-reaffect(app(document.getElementById('root')))
+function* app(root: Element) { 
+  while (true)
+    // @ts-ignore
+    yield* main(root)
+}
+
+reaffect<Msg>(app(document.getElementById('root')))

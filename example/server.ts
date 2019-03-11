@@ -19,7 +19,7 @@ const MessageEvents = fromEmissions<WebSocket.Data, Msg>('message',
 const CloseEvents = fromEmissions<any, Msg>('close',
   (src: WebSocket) => ({kind: 'close', src}))
 
-function* main(wss: WebSocket.Server): Engine<Msg> {
+function* main(wss: WebSocket.Server) {
   const sockets = new Set<WebSocket>()
   while (true) {
     const msg = (
@@ -46,5 +46,5 @@ function* main(wss: WebSocket.Server): Engine<Msg> {
 }
 
 const server = http.createServer(new Bundler('./index.html').middleware())
-reaffect(withLogAll(main(new WebSocket.Server({ server }))))
+reaffect<Msg>(withLogAll(main(new WebSocket.Server({ server }))))
 server.listen(1234)
